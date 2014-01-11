@@ -1,0 +1,11 @@
+background study_room
+terrain table 591 194 271 295
+terrain sidetable 134 204 156 211
+terrain sofa1 174 494 203 11
+terrain sofatable 224 584 103 1
+terrain sofa2 179 654 198 31
+terrain armchair 84 574 53 31
+terrain leftbound 47 0 1 768
+terrain rightbound 977 0 1 768
+terrain bottombound 0 724 1024 1
+terrain topbound 0 5 1024 1

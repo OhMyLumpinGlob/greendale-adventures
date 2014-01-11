@@ -3,7 +3,7 @@
 # IMPORTS #
 import pygame
 from pygame.locals import *
-import sys
+import sys, os
 
 # FUNCTIONS #
 def quit_game():
@@ -52,6 +52,26 @@ def get_resources_dict():
     
 
 # CLASSES #
+class Level:
+
+    def __init__(self, level_name):
+        self.level_name = level_name
+        self.background = None
+        
+        self.make_level()
+        
+
+    def make_level(self):
+        with open('data/level_data_files/' + self.level_name, 'r') as f:
+            for line in f:
+                line = line.split()
+                if line[0] == 'background':
+                    self.background = pygame.image.load(RESOURCES_DICT[line[1]])
+                elif line[0] == 'terrain':
+                    Terrain(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5])))
+        
+                    
+
 class SpriteGroupClass(pygame.sprite.Group):
 
     def __init__(self):
@@ -100,9 +120,10 @@ class PlayerClass(pygame.sprite.Sprite):
 
 class Terrain(pygame.sprite.Sprite):
 
-    def __init__(self,rect):
+    def __init__(self, name, rect):
         pygame.sprite.Sprite.__init__(self)
         self.rect = rect
+        self.name = name
         TerrainGroup.add(self)
 
 # INIT #
@@ -120,7 +141,9 @@ sprites = SpriteGroupClass()
 TerrainGroup = SpriteGroupClass()
 player = PlayerClass(RESOURCES_DICT['player_spritesheet'].strip())
 player.set_position((487,375))
-background = build_level('study_room1')
+#background = build_level('study_room1')
+current_level = Level('study_room1')
+background = current_level.background
 screen.blit(background, (0,0))
 
 while 1:
