@@ -1,5 +1,9 @@
 # VERSION 0.1 ALPHA #
 
+# TO-DO LIST
+#- Integrate TerrainGroup into the Control.current_level object so that there doesn't need to be a TerrainGroup.clear() call in the event handler
+#- Create some levels, populate the level_data_files for those levels
+
 # IMPORTS #
 import pygame
 from pygame.locals import *
@@ -9,15 +13,6 @@ import sys, os
 def quit_game():
     pygame.quit()
     sys.exit()
-
-def build_level(level):
-    if level == 'study_room1':
-        background = pygame.image.load(RESOURCES_DICT['study_room'])
-        table = Terrain((591,202,271,301))
-    else:
-        print 'ERROR, LEVEL ' + level + ' NOT FOUND'
-        quit_game()
-    return background
 
 def event_handler(event):
     if event.type == pygame.KEYDOWN:
@@ -39,6 +34,11 @@ def event_handler(event):
             print player.rect.left
         elif event.key == K_d:
             print player.rect.right
+        elif event.key == K_SPACE:
+            collide_list = pygame.sprite.spritecollide(player, Control.current_level.LevelExitGroup, False)
+            if len(collide_list) > 0:
+                TerrainGroup.empty()
+                Control.current_level = Level(collide_list[0].dest)
     elif event.type == pygame.QUIT:
         quit_game()
 
@@ -52,26 +52,42 @@ def get_resources_dict():
     
 
 # CLASSES #
+class ControlClass:
+
+    def __init__(self):
+        self.current_level = None
+        
+
+class LevelExit(pygame.sprite.Sprite):
+
+    def __init__(self, dest, rect):
+        pygame.sprite.Sprite.__init__(self)
+        self.rect = rect
+        self.dest = dest
+
 class Level:
 
     def __init__(self, level_name):
         self.level_name = level_name
         self.background = None
-        
+        self.LevelExitGroup = SpriteGroupClass()
         self.make_level()
         
-
     def make_level(self):
         with open('data/level_data_files/' + self.level_name, 'r') as f:
             for line in f:
                 line = line.split()
                 if line[0] == 'background':
                     self.background = pygame.image.load(RESOURCES_DICT[line[1]])
+                    screen.blit(self.background, (0,0))
                 elif line[0] == 'terrain':
                     Terrain(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5])))
+                elif line[0] == 'exit':
+                    self.LevelExitGroup.add(LevelExit(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5]))))
+                elif line[0] == 'playerposition':
+                    player.set_position((int(line[1]),int(line[2])))
         
                     
-
 class SpriteGroupClass(pygame.sprite.Group):
 
     def __init__(self):
@@ -131,26 +147,24 @@ pygame.init()
 screen = pygame.display.set_mode((1366,768),DOUBLEBUF|FULLSCREEN)
 pygame.key.set_repeat(50,50)
 
-# GLOBALS
+# GLOBALS #
 FPS = pygame.time.Clock()
 RESOURCES_DICT = get_resources_dict()
 WALKSPEED = 10
 
-# MAIN #
+Control = ControlClass()
 sprites = SpriteGroupClass()
 TerrainGroup = SpriteGroupClass()
 player = PlayerClass(RESOURCES_DICT['player_spritesheet'].strip())
-player.set_position((487,375))
-#background = build_level('study_room1')
-current_level = Level('study_room1')
-background = current_level.background
-screen.blit(background, (0,0))
+Control.current_level = Level('study_room1')
+
+# MAIN #
 
 while 1:
     FPS.tick(30)
     for event in pygame.event.get():
         event_handler(event)
-    sprites.clear(screen, background)
+    sprites.clear(screen, Control.current_level.background)
     sprites.update()
     sprites.draw(screen)
     pygame.display.flip()

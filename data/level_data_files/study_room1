@@ -9,3 +9,5 @@ terrain leftbound 47 0 1 768
 terrain rightbound 977 0 1 768
 terrain bottombound 0 724 1024 1
 terrain topbound 0 5 1024 1
+exit library_front1 431 0 134 47
+playerposition 487 375
