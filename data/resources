@@ -1,3 +1,10 @@
 player_spritesheet sprites\player.png
 study_room data\study_room.png
 library_front data\library_front.png
+study_room_table data\table.png
+study_room_sidetable data\sidetable.png
+study_room_sofatable data\sofatable.png
+NoImage data\noimage.png
+study_room_sofafront data\sofafront.png
+study_room_sofaback data\sofaback.png
+study_room_armchair data\armchairright.png
