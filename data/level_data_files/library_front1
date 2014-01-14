@@ -1,2 +1,8 @@
 background library_front
-playerposition 487 375
+terrain leftbound 47 0 1 768 NoImage 0
+terrain rightbound 977 0 1 768 NoImage 0
+terrain bottombound 0 724 1024 1 NoImage 0
+terrain topbound 0 5 1024 1 NoImage 0
+playerposition default 487 375
+playerposition study_room1 487 648
+exit study_room1 430 701 140 67 down

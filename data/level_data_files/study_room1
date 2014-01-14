@@ -1,14 +1,16 @@
 background study_room
-terrain table 591 194 271 261 study_room_table
-terrain sidetable 134 204 156 141 study_room_sidetable
-terrain sofa1 174 494 203 11 study_room_sofafront
-terrain sofatable 224 584 103 1 study_room_sofatable
-terrain sofa2 174 654 198 31 study_room_sofaback
-terrain armchair 74 569 58 21 study_room_armchair
-terrain leftbound 47 0 1 768 NoImage
-terrain rightbound 977 0 1 768 NoImage
-terrain bottombound 0 724 1024 1 NoImage
-terrain topbound 0 5 1024 1 NoImage
-exit library_front1 431 0 134 47
-exit library_back1 669 701 135 67
-playerposition 487 375
+terrain table 591 194 271 261 study_room_table 20
+terrain sidetable 134 204 156 141 study_room_sidetable 20
+terrain sofa1 174 494 203 21 study_room_sofafront 20
+terrain sofatable 224 584 103 1 study_room_sofatable 5
+terrain sofa2 174 654 198 31 study_room_sofaback 20
+terrain armchair 74 569 58 21 study_room_armchair 20
+terrain leftbound 47 0 1 768 NoImage 0
+terrain rightbound 977 0 1 768 NoImage 0
+terrain bottombound 0 724 1024 1 NoImage 0
+terrain topbound 0 5 1024 1 NoImage 0
+exit library_front1 431 0 134 47 up
+exit library_back1 669 701 135 67 down
+playerposition default 487 375
+playerposition library_front1 487 10
+pickup cupcake 400 300 CUPCAKE0001

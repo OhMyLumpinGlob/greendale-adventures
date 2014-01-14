@@ -15,14 +15,19 @@ class ControlClass:
         self.current_level = None
         self.sprites = None
         self.player = None
+        self.overlay = None
         self.FPS = pygame.time.Clock()
         self.RESOURCES_DICT = self.get_resources_dict()
         self.WALKSPEED = 10
+        self.over_player_group = None
+        self.UID_EXCLUSIONS = []
 
     def first_setup(self):
         self.sprites = SpriteGroupClass()
+        self.over_player_group = SpriteGroupClass()
         self.player = PlayerClass(self.get_resource('player_spritesheet').strip())
-        self.change_level('study_room1')
+        self.change_level('study_room1','down')
+        self.overlay = Overlay()
 
     def get_resource(self, resource_id):
         return self.RESOURCES_DICT[resource_id]
@@ -57,27 +62,57 @@ class ControlClass:
             elif event.key == K_d:
                 print self.player.get_rect().right
             elif event.key == K_SPACE:
-                collide_list = pygame.sprite.spritecollide(self.player, self.get_level_exits(), False)
+                collide_list = pygame.sprite.spritecollide(self.player, self.get_level_objects(), False)
                 if len(collide_list) > 0:
-                    self.change_level(collide_list[0].dest)
+                    collide_list[0].interact()
+            elif event.key == K_i:
+                print self.player.get_inventory()
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                for obj in self.overlay.objects:
+                    if event.pos[0] > obj.rect.left and event.pos[0] < obj.rect.right and event.pos[1] > obj.rect.top and event.pos[1] < obj.rect.bottom:
+                        obj.clicked()
         elif event.type == pygame.QUIT:
             self.quit_game()    
 
-    def change_level(self, new_level):
+    def change_level(self, new_level, direc):
+        if self.current_level != None:
+            prev_level = self.current_level.level_name
+        else:
+            prev_level = 'default'
         self.current_level = Level(new_level)
-        self.current_level.make_level()
+        self.current_level.make_level(prev_level)
+        self.player.direc = direc
 
+    def get_level_objects(self):
+        return self.current_level.get_interactive_objects()
+    
     def get_level_exits(self):
         return self.current_level.get_exit_group()
 
     def render(self):
         self.sprites.clear(screen, self.current_level.get_background())
         self.get_terrain_group().clear(screen, self.current_level.get_background())
+        self.over_player_group.clear(screen, self.current_level.get_background())
+        self.current_level.DrawnObjectGroup.clear(screen, self.current_level.get_background())
+        self.depth_getter()
         self.sprites.update()
+        self.overlay.objects.update()
+        self.remove_from_terrain_group(self.over_player_group.sprites())
         self.get_terrain_group().draw(screen)
+        self.current_level.DrawnObjectGroup.draw(screen)
         self.sprites.draw(screen)
+        self.over_player_group.draw(screen)
+        self.overlay.objects.draw(screen)
+        self.add_to_terrain_group(self.over_player_group.sprites())
+        self.over_player_group.empty()
         pygame.display.flip()
 
+    def depth_getter(self):
+        for sprite in self.get_terrain_group().sprites():
+            if sprite.rect.bottom > self.player.rect.bottom:
+                self.over_player_group.add(sprite)
+    
     def quit_game(self):
         pygame.quit()
         sys.exit()
@@ -91,14 +126,62 @@ class ControlClass:
         return resources
 
     def add_to_terrain_group(self,obj):
-        self.current_level.TerrainGroup.add(obj)
+        self.get_terrain_group().add(obj)
 
-class LevelExit(pygame.sprite.Sprite):
+    def remove_from_terrain_group(self, objlist):
+        self.get_terrain_group().remove(objlist)
 
-    def __init__(self, dest, rect):
+class Overlay:
+
+    def __init__(self):
+        self.objects = SpriteGroupClass()
+        with open('data/overlay') as f:
+            for line in f:
+                line = line.split()
+                if line[0] == 'invslot':
+                    self.objects.add(InvSlot((int(line[1]),int(line[2]),int(line[3]),int(line[4])),int(line[5])))
+            
+
+class InteractiveObject(pygame.sprite.Sprite):
+
+    def __init__(self):
         pygame.sprite.Sprite.__init__(self)
+        self.type = 'undefined'
+
+    def interact(self):
+        if self.type == 'undefined':
+            print 'Object type undefined'
+        elif self.type == 'exit':
+            self.use_exit()
+        elif self.type == 'pickup':
+            self.pick_up_object()
+
+    def use_exit(self):
+        Control.change_level(self.dest,self.direc)
+
+    def pick_up_object(self):
+        Control.player.add_to_inventory(self)
+
+class LevelExit(InteractiveObject):
+
+    def __init__(self, dest, rect, direc):
+        InteractiveObject.__init__(self)
         self.rect = rect
         self.dest = dest
+        self.direc = direc
+        self.type = 'exit'
+
+class Pickup(InteractiveObject):
+
+    def __init__(self, name, image, pos, UID):
+        InteractiveObject.__init__(self)
+        self.name = name
+        self.type = 'pickup'
+        self.image = image
+        self.rect = image.get_rect(left=pos[0],top=pos[1])
+        self.icon = pygame.transform.scale(self.image, (50,50))
+        self.UID = UID
+
 
 class Level:
 
@@ -107,8 +190,10 @@ class Level:
         self.background = None
         self.TerrainGroup = SpriteGroupClass()
         self.LevelExitGroup = SpriteGroupClass()
+        self.InteractiveObjectGroup = SpriteGroupClass()
+        self.DrawnObjectGroup = SpriteGroupClass()
         
-    def make_level(self):
+    def make_level(self,prev_level):
         with open('data/level_data_files/' + self.level_name, 'r') as f:
             for line in f:
                 line = line.split()
@@ -116,12 +201,20 @@ class Level:
                     self.background = pygame.image.load(Control.get_resource(line[1]))
                     screen.blit(self.background, (0,0))
                 elif line[0] == 'terrain':
-                    Terrain(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5])), pygame.image.load(Control.get_resource(line[6])))
+                    self.TerrainGroup.add(Terrain(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5])), pygame.image.load(Control.get_resource(line[6])),int(line[7])))
                 elif line[0] == 'exit':
-                    self.LevelExitGroup.add(LevelExit(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5]))))
+                    self.InteractiveObjectGroup.add(LevelExit(line[1],(int(line[2]),int(line[3]),int(line[4]),int(line[5])),line[6]))
                 elif line[0] == 'playerposition':
-                    Control.set_player_position((int(line[1]),int(line[2])))
+                    if line[1] == prev_level:
+                        Control.set_player_position((int(line[2]),int(line[3])))
+                elif line[0] == 'pickup':
+                    if line[4] not in Control.UID_EXCLUSIONS:
+                        temp_object = Pickup(line[1],pygame.image.load(Control.get_resource(line[1])),(int(line[2]),int(line[3])),line[4])
+                        self.InteractiveObjectGroup.add(temp_object)
+                        self.DrawnObjectGroup.add(temp_object)
         
+    def get_interactive_objects(self):
+        return self.InteractiveObjectGroup
 
     def get_background(self):
         return self.background
@@ -151,10 +244,11 @@ class PlayerClass(pygame.sprite.Sprite):
         Control.add_to_sprites(self)
         self.animate_counter = 1
         self.direc = 'down'
+        self.inventory = [None]*20
 
     def move(self,x,y,direc):
         self.rect.move_ip(x,y)
-        if len(pygame.sprite.spritecollide(self, Control.get_terrain_group(), False)) > 0:
+        if self.check_collision():
             self.rect.move_ip(-x,-y)
         if direc == self.direc:
             self.animate_counter += 1
@@ -163,6 +257,12 @@ class PlayerClass(pygame.sprite.Sprite):
         else:
             self.direc = direc
             self.animate_counter = 1
+
+    def check_collision(self):
+        for sprite in pygame.sprite.spritecollide(self, Control.get_terrain_group(), False):
+            if self.get_rect().bottom > sprite.rect.top + sprite.mask_y_offset:
+                return True
+        return False
 
     def set_position(self, dest):
         self.rect.x = dest[0]
@@ -185,14 +285,52 @@ class PlayerClass(pygame.sprite.Sprite):
     def get_rect(self):
         return self.rect
 
+    def add_to_inventory(self, obj):
+        if self.inventory.count(None) > 0:
+            self.inventory[self.inventory.index(None)] = obj
+            Control.current_level.DrawnObjectGroup.remove(obj)
+            Control.current_level.InteractiveObjectGroup.remove(obj)
+            Control.UID_EXCLUSIONS.append(obj.UID)
+        else:
+            print 'Inventory Full'
+
+    def get_inventory(self):
+        return self.inventory
+
+class InvSlot(pygame.sprite.Sprite):
+
+    def __init__(self, rect, slot):
+        pygame.sprite.Sprite.__init__(self)
+        self.empty_image = pygame.image.load(Control.get_resource('inv_slot'))
+        self.image = self.empty_image
+        self.rect = Rect(rect)
+        self.contained = None
+        self.slot = slot
+        self.type = 'invslot'
+
+    def assign(self,obj):
+        self.image = pygame.transform.scale(obj.image, (50,50))
+        self.contained = obj
+
+    def empty(self):
+        self.image = self.empty_image
+
+    def update(self):
+        if Control.player.get_inventory()[self.slot] != self.contained:
+            self.assign(Control.player.get_inventory()[self.slot])
+
+    def clicked(self):
+        print 'clicked slot ' + str(self.slot)
+
 class Terrain(pygame.sprite.Sprite):
 
-    def __init__(self, name, rect, image):
+    def __init__(self, name, rect, image, mask_y_offset):
         pygame.sprite.Sprite.__init__(self)
-        self.rect = rect
+        self.rect = pygame.Rect(rect)
         self.name = name
         self.image = image
-        Control.add_to_terrain_group(self)
+        self.mask_y_offset = mask_y_offset
+        
 
 # INIT #
 pygame.init() # Initialise Pygame for use
